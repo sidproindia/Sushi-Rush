@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Sushi Rush</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+            touch-action: manipulation;
+        }
+
+        body {
+            background: #100a1c;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #3c2415;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            max-width: 480px;
+            max-height: 850px;
+            background: linear-gradient(180deg, #aa91e2 0%, #8e73cf 100%);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.65);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        #canvas-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(16, 10, 28, 0.78);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: linear-gradient(180deg, #ffffff 0%, #fff4e5 100%);
+            border: 4px solid #ffcc80;
+            border-radius: 32px;
+            padding: 24px;
+            width: 88%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 3px 6px #ffffff;
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .overlay.active .modal {
+            transform: scale(1);
+        }
+
+        h1 {
+            font-size: 34px;
+            color: #ff5722;
+            text-shadow: 2px 2px 0 #ffe0b2, 4px 4px 0 #5d4037;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            font-weight: 900;
+        }
+
+        h2 {
+            font-size: 24px;
+            color: #5d4037;
+            margin-bottom: 16px;
+            font-weight: 800;
+        }
+
+        p {
+            font-size: 15px;
+            color: #6d4c41;
+            margin-bottom: 18px;
+            line-height: 1.45;
+            font-weight: 600;
+        }
+
+        .btn {
+            background: linear-gradient(180deg, #ff7043 0%, #d84315 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 14px 28px;
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #8d2600, 0 8px 18px rgba(0,0,0,0.35);
+            transition: all 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 6px;
+            text-shadow: 0 2px 2px rgba(0,0,0,0.3);
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #8d2600, 0 4px 8px rgba(0,0,0,0.35);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(180deg, #26a69a 0%, #00695c 100%);
+            box-shadow: 0 6px 0 #003d33, 0 8px 18px rgba(0,0,0,0.35);
+        }
+
+        .btn-secondary:active {
+            box-shadow: 0 2px 0 #003d33, 0 4px 8px rgba(0,0,0,0.35);
+        }
+
+        .btn-icon {
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            box-shadow: 0 4px 0 #003d33, 0 4px 10px rgba(0,0,0,0.25);
+            flex-shrink: 0;
+        }
+
+        /* HUD Bar */
+        #hud {
+            position: absolute;
+            top: max(10px, env(safe-area-inset-top));
+            left: 8px;
+            right: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            pointer-events: none;
+            gap: 4px;
+        }
+
+        .hud-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #e0d0eb;
+            border-radius: 14px;
+            padding: 5px 8px;
+            font-weight: 900;
+            font-size: 12px;
+            color: #3c2415;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        #controls-panel {
+            position: absolute;
+            bottom: max(0px, env(safe-area-inset-bottom));
+            left: 0;
+            width: 100%;
+            padding: 10px 8px 14px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 5;
+            background: linear-gradient(to top, rgba(20, 10, 30, 0.88), rgba(20, 10, 30, 0));
+            pointer-events: none;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            pointer-events: auto;
+            position: relative;
+        }
+
+        .chef-btn {
+            width: 62px;
+            height: 64px;
+            background: linear-gradient(180deg, #ffffff 0%, #fff0db 100%);
+            border: 3px solid #ffa726;
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #e65100, 0 8px 14px rgba(0,0,0,0.3);
+            transition: transform 0.08s ease;
+            position: relative;
+        }
+
+        .chef-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #e65100, 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .chef-btn img {
+            width: 34px;
+            height: 34px;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
+            pointer-events: none;
+            margin-top: -4px;
+        }
+
+        .stock-badge {
+            position: absolute;
+            bottom: -6px;
+            background: #2e7d32;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 900;
+            padding: 1px 6px;
+            border-radius: 10px;
+            border: 1.5px solid #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            pointer-events: none;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .stock-badge.empty {
+            background: #d32f2f;
+        }
+
+        .chef-btn.out-of-stock {
+            background: linear-gradient(180deg, #ffebee 0%, #ffcdd2 100%);
+            border-color: #ef5350;
+            box-shadow: 0 5px 0 #c62828, 0 8px 14px rgba(0,0,0,0.2);
+        }
+
+        .booster-btn {
+            background: linear-gradient(180deg, #ffffff 0%, #f3e5f5 100%);
+            border: 2px solid #ab47bc;
+            border-radius: 14px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 900;
+            color: #4a148c;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #4a148c, 0 6px 10px rgba(0,0,0,0.2);
+        }
+
+        .booster-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #4a148c;
+        }
+
+        .booster-btn.disabled {
+            opacity: 0.5;
+            filter: grayscale(1);
+            pointer-events: none;
+        }
+
+        .badge {
+            background: #ff1744;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+
+        .gold-coin-icon {
+            width: 15px;
+            height: 15px;
+            display: inline-block;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
+        .gift-box-card {
+            background: #ffffff;
+            border: 2px solid #ffcc80;
+            border-radius: 18px;
+            padding: 10px 12px;
+            margin: 10px 0 14px 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+
+        .gift-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 900;
+            font-size: 13px;
+            color: #5d4037;
+            margin-bottom: 6px;
+        }
+
+        .gift-bar-bg {
+            background: #f1f1f1;
+            height: 14px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .gift-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff9800 0%, #4caf50 100%);
+            border-radius: 10px;
+            transition: width 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .gift-unlocked-text {
+            color: #2e7d32;
+            font-weight: 900;
+            font-size: 12px;
+            margin-top: 6px;
+            display: none;
+            animation: bounceText 0.6s infinite alternate;
+        }
+
+        @keyframes bounceText {
+            from { transform: translateY(0); }
+            to { transform: translateY(-3px); }
+        }
+
+        /* Level 1 Tutorial Hand Overlay Pointer */
+        #tutorial-hand {
+            position: absolute;
+            width: 52px;
+            height: 64px;
+            z-index: 25;
+            pointer-events: none;
+            display: none;
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.45));
+            animation: handTapAnim 0.7s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+
+        @keyframes handTapAnim {
+            0% {
+                transform: translate(10px, 24px) scale(1.08) rotate(-10deg);
+            }
+            100% {
+                transform: translate(0px, 2px) scale(0.92) rotate(-10deg);
+            }
+        }
+
+        /* Level 1 Center Instruction Text & Arrow */
+        #level1-prompt {
+            position: absolute;
+            top: 48%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            pointer-events: none;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 82%;
+            max-width: 320px;
+            text-align: center;
+        }
+
+        .prompt-text {
+            background: rgba(255, 255, 255, 0.96);
+            border: 3px solid #ff7043;
+            border-radius: 20px;
+            padding: 12px 18px;
+            color: #3c2415;
+            font-size: 16px;
+            font-weight: 900;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            line-height: 1.35;
+        }
+
+        .prompt-arrow {
+            font-size: 38px;
+            color: #ff7043;
+            margin-top: 4px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            animation: arrowBounce 0.7s infinite alternate ease-in-out;
+        }
+
+        @keyframes arrowBounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+
+        #svg-defs {
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Top HUD Bar -->
+        <div id="hud">
+            <div class="hud-card">
+                <span style="color:#7e57c2;">LVL</span>
+                <span id="hud-level" style="color: #e65100;">1</span>
+            </div>
+
+            <div class="hud-card">
+                <svg class="gold-coin-icon" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="14" fill="#ffb300" stroke="#ff6f00" stroke-width="2"/>
+                    <circle cx="16" cy="16" r="10" fill="#ffd54f"/>
+                    <text x="16" y="21" font-size="14" font-weight="900" fill="#ff6f00" text-anchor="middle">¢</text>
+                </svg>
+                <span id="hud-coins" style="color: #f57f17;">0</span>
+            </div>
+
+            <div class="hud-card">
+                <span>🐷</span>
+                <span id="hud-objective" style="color: #d84315;">0/4</span>
+            </div>
+
+            <div class="hud-card">
+                <span>⏱️</span>
+                <span id="hud-timer" style="color: #2e7d32;">02:00</span>
+            </div>
+
+            <button class="btn btn-secondary btn-icon" id="btn-pause" style="pointer-events: auto;">⏸</button>
+        </div>
+
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+
+        <!-- Level 1 Instruction Text and Arrow -->
+        <div id="level1-prompt">
+            <div class="prompt-text">Tap on the sushi dishes below to serve the piggies</div>
+            <div class="prompt-arrow">⬇</div>
+        </div>
+
+        <div id="controls-panel">
+            <div class="control-row">
+                <button class="booster-btn" id="btn-boost-fast">
+                    <span>⚡ Fast Belt</span>
+                    <span class="badge" id="badge-fast">FREE: 3</span>
+                </button>
+                <button class="booster-btn" id="btn-boost-trash" style="background: linear-gradient(180deg, #ffffff 0%, #ffebee 100%); border-color: #ef5350; color: #b71c1c;">
+                    <span>🗑️ Clear One</span>
+                    <span class="badge" id="badge-trash" style="background: #c62828;">FREE: 3</span>
+                </button>
+            </div>
+
+            <div class="control-row" id="chef-row"></div>
+        </div>
+
+        <!-- Tutorial Tapping Hand Element -->
+        <div id="tutorial-hand">
+            <svg viewBox="0 0 100 120" width="52" height="64">
+                <defs>
+                    <linearGradient id="handSkin" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f5b78b"/>
+                        <stop offset="60%" stop-color="#e28b63"/>
+                        <stop offset="100%" stop-color="#c96f42"/>
+                    </linearGradient>
+                    <linearGradient id="cuffGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#e0e6ed"/>
+                        <stop offset="100%" stop-color="#a0abb5"/>
+                    </linearGradient>
+                    <linearGradient id="sleeveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#3a3840"/>
+                        <stop offset="100%" stop-color="#1f1e24"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- Index Finger (Pointing Up) -->
+                <rect x="36" y="8" width="16" height="50" rx="8" fill="url(#handSkin)"/>
+                
+                <!-- Thumb (Pointing Left) -->
+                <path d="M 38 52 Q 10 52 14 62 Q 22 72 38 68 Z" fill="url(#handSkin)"/>
+
+                <!-- Main Palm -->
+                <path d="M 32 44 L 80 44 C 86 44, 88 55, 88 78 C 88 88, 78 92, 38 92 C 30 92, 30 78, 32 44 Z" fill="url(#handSkin)"/>
+
+                <!-- Curled Middle, Ring, Pinky Fingers -->
+                <rect x="50" y="28" width="14" height="28" rx="7" fill="url(#handSkin)"/>
+                <rect x="62" y="32" width="13" height="26" rx="6.5" fill="url(#handSkin)"/>
+                <rect x="73" y="38" width="12" height="22" rx="6" fill="url(#handSkin)"/>
+
+                <!-- White/Light Cuff Ring -->
+                <rect x="35" y="90" width="48" height="10" rx="4" fill="url(#cuffGrad)" stroke="#808d98" stroke-width="1.5"/>
+
+                <!-- Dark Sleeve Base -->
+                <rect x="32" y="98" width="54" height="16" rx="6" fill="url(#sleeveGrad)"/>
+            </svg>
+        </div>
+
+        <!-- Start Overlay -->
+        <div class="overlay active" id="menu-overlay">
+            <div class="modal">
+                <h1>SUSHI RUSH</h1>
+                <p>Tap the requested sushi dishes to feed every hungry piggy before time runs out!</p>
+                <button class="btn" id="btn-start">PLAY GAME</button>
+            </div>
+        </div>
+
+        <!-- Pause Overlay -->
+        <div class="overlay" id="pause-overlay">
+            <div class="modal">
+                <h2>GAME PAUSED</h2>
+                <button class="btn" id="btn-resume">RESUME</button>
+                <button class="btn btn-secondary" id="btn-restart-pause">RESTART</button>
+            </div>
+        </div>
+
+        <!-- Belt Overflow Game Over Overlay -->
+        <div class="overlay" id="gameover-overlay">
+            <div class="modal">
+                <h1 id="go-title" style="color: #d32f2f;">BELT FULL!</h1>
+                <p id="go-message">The conveyor belt overflowed and crashed!</p>
+                <button class="btn" id="btn-restart">TRY AGAIN</button>
+            </div>
+        </div>
+
+        <!-- Out of Time Overlay (+30s for Coins) -->
+        <div class="overlay" id="time-overlay">
+            <div class="modal">
+                <h1 style="color: #d32f2f;">TIME'S UP!</h1>
+                <p>You ran out of time! Get extra time to continue serving piggies?</p>
+                <button class="btn" id="btn-buy-time" style="background: linear-gradient(180deg, #4caf50 0%, #2e7d32 100%); box-shadow: 0 6px 0 #1b5e20;">
+                    +30 Secs (
+                    <svg class="gold-coin-icon" style="width:18px; height:18px;" viewBox="0 0 32 32">
+                        <circle cx="16" cy="16" r="14" fill="#ffb300" stroke="#ff6f00" stroke-width="2"/>
+                        <circle cx="16" cy="16" r="10" fill="#ffd54f"/>
+                        <text x="16" y="21" font-size="14" font-weight="900" fill="#ff6f00" text-anchor="middle">¢</text>
+                    </svg>100)
+                </button>
+                <br>
+                <button class="btn btn-secondary" id="btn-restart-time">RESTART</button>
+            </div>
+        </div>
+
+        <!-- Level Complete Overlay -->
+        <div class="overlay" id="win-overlay">
+            <div class="modal">
+                <h1 style="color: #2e7d32;">STAGE CLEAR!</h1>
+                <p style="margin-bottom:10px;">All the hungry piggies were happily served!</p>
+                
+                <p style="font-size: 18px; font-weight: 900; color: #f57f17; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    Reward: +100 
+                    <svg class="gold-coin-icon" style="width:20px; height:20px;" viewBox="0 0 32 32">
+                        <circle cx="16" cy="16" r="14" fill="#ffb300" stroke="#ff6f00" stroke-width="2"/>
+                        <circle cx="16" cy="16" r="10" fill="#ffd54f"/>
+                        <text x="16" y="21" font-size="14" font-weight="900" fill="#ff6f00" text-anchor="middle">¢</text>
+                    </svg>
+                </p>
+
+                <div class="gift-box-card">
+                    <div class="gift-title-row">
+                        <span>🎁 Gift Box Progress</span>
+                        <span id="gift-percent-text">10%</span>
+                    </div>
+                    <div class="gift-bar-bg">
+                        <div class="gift-bar-fill" id="gift-bar-fill"></div>
+                    </div>
+                    <div class="gift-unlocked-text" id="gift-reward-msg">🎉 1x Free Booster Granted!</div>
+                </div>
+
+                <button class="btn" id="btn-next">NEXT LEVEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SVG Graphic Templates -->
+    <svg id="svg-defs">
+        <defs>
+            <g id="sushi-salmon">
+                <ellipse cx="25" cy="28" rx="19" ry="12" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
+                <path d="M 7 22 C 12 10, 38 10, 43 22 C 45 28, 38 32, 25 32 C 12 32, 5 28, 7 22 Z" fill="#ff5252"/>
+                <path d="M 13 17 Q 25 24 37 17" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.9"/>
+                <path d="M 16 22 Q 25 27 34 22" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.9"/>
+            </g>
+            <g id="sushi-shrimp">
+                <ellipse cx="25" cy="28" rx="19" ry="12" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
+                <path d="M 9 24 Q 25 8 41 18 Q 36 30 25 30 Q 14 30 9 24 Z" fill="#ffab91"/>
+                <path d="M 39 16 L 47 12 L 45 20 Z" fill="#ff8a65"/>
+                <path d="M 17 19 Q 22 25 27 19" stroke="#ffffff" stroke-width="2.5" fill="none"/>
+            </g>
+            <g id="sushi-tamago">
+                <ellipse cx="25" cy="28" rx="19" ry="12" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
+                <rect x="7" y="13" width="36" height="17" rx="6" fill="#ffd54f" stroke="#f57f17" stroke-width="2"/>
+                <rect x="19" y="11" width="12" height="21" fill="#212121" rx="3"/>
+            </g>
+            <g id="sushi-tuna">
+                <ellipse cx="25" cy="28" rx="19" ry="12" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
+                <path d="M 7 22 C 12 10, 38 10, 43 22 C 45 28, 38 32, 25 32 C 12 32, 5 28, 7 22 Z" fill="#c2185b"/>
+                <path d="M 11 19 Q 25 14 39 19" stroke="#f48fb1" stroke-width="2.5" fill="none" opacity="0.8"/>
+            </g>
+            <g id="sushi-cucumber">
+                <circle cx="25" cy="25" r="19" fill="#212121"/>
+                <circle cx="25" cy="25" r="14" fill="#ffffff"/>
+                <rect x="17" y="17" width="16" height="16" rx="4" fill="#43a047"/>
+                <circle cx="21" cy="21" r="2.5" fill="#a5d6a7"/>
+            </g>
+            <g id="sushi-avocado">
+                <circle cx="25" cy="25" r="19" fill="#212121"/>
+                <circle cx="25" cy="25" r="14" fill="#ffffff"/>
+                <path d="M 15 19 Q 25 12 35 19 Q 31 32 25 30 Q 19 32 15 19 Z" fill="#b2ff59"/>
+                <circle cx="25" cy="22" r="4.5" fill="#76ff03"/>
+            </g>
+        </defs>
+    </svg>
+
+    <script>
+        /* ==========================================
+           1. AUDIO SYNTHESIZER
+           ========================================== */
+        class AudioSystem {
+            constructor() {
+                this.ctx = null;
+                this.initialized = false;
+            }
+
+            init() {
+                if (this.initialized) return;
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                    this.initialized = true;
+                } catch (e) {}
+            }
+
+            playTone(freq, type, duration, startVol = 0.2, endVol = 0) {
+                if (!this.initialized || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(startVol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(Math.max(endVol, 0.0001), this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            }
+
+            playSpawn() {
+                this.playTone(420, 'sine', 0.08, 0.18);
+                setTimeout(() => this.playTone(640, 'sine', 0.08, 0.18), 40);
+            }
+
+            playServe() {
+                this.playTone(523.25, 'triangle', 0.12, 0.2);
+                setTimeout(() => this.playTone(659.25, 'triangle', 0.12, 0.2), 80);
+                setTimeout(() => this.playTone(783.99, 'triangle', 0.2, 0.2), 160);
+            }
+
+            playClick() {
+                this.playTone(320, 'square', 0.05, 0.08);
+            }
+
+            playGameOver() {
+                this.playTone(300, 'sawtooth', 0.2, 0.2);
+                setTimeout(() => this.playTone(250, 'sawtooth', 0.2, 0.2), 150);
+                setTimeout(() => this.playTone(200, 'sawtooth', 0.4, 0.2), 300);
+            }
+
+            playWin() {
+                const notes = [440, 554.37, 659.25, 880, 1046.50];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => this.playTone(freq, 'triangle', 0.15, 0.2), i * 90);
+                });
+            }
+        }
+
+        const sound = new AudioSystem();
+
+        /* ==========================================
+           2. GAME DATA
+           ========================================== */
+        const SUSHI_TYPES = [
+            { id: 'salmon', name: 'Salmon', color: '#ff5252', svgId: 'sushi-salmon' },
+            { id: 'shrimp', name: 'Shrimp', color: '#ffab91', svgId: 'sushi-shrimp' },
+            { id: 'tamago', name: 'Tamago', color: '#ffd54f', svgId: 'sushi-tamago' },
+            { id: 'tuna', name: 'Tuna', color: '#c2185b', svgId: 'sushi-tuna' },
+            { id: 'cucumber', name: 'Cucumber', color: '#43a047', svgId: 'sushi-cucumber' },
+            { id: 'avocado', name: 'Avocado', color: '#b2ff59', svgId: 'sushi-avocado' }
+        ];
+
+        const CUSTOMER_BODY_COLORS = ['#ff80ab', '#80deea', '#ffe082', '#a5d6a7', '#ce93d8', '#ffab91'];
+
+        /* ==========================================
+           3. UTILITIES
+           ========================================== */
+        function lerp(a, b, t) { return a + (b - a) * t; }
+
+        function getPointOnTrack(pathPoints, progress) {
+            const total = pathPoints.length;
+            const p = (progress % 1.0 + 1.0) % 1.0;
+            const idx = p * total;
+            const i1 = Math.floor(idx) % total;
+            const i2 = (i1 + 1) % total;
+            const remainder = idx - i1;
+
+            const pt1 = pathPoints[i1];
+            const pt2 = pathPoints[i2];
+
+            const dx = pt2.x - pt1.x;
+            const dy = pt2.y - pt1.y;
+            const angle = Math.atan2(dy, dx);
+
+            return {
+                x: lerp(pt1.x, pt2.x, remainder),
+                y: lerp(pt1.y, pt2.y, remainder),
+                angle: angle
+            };
+        }
+
+        /* ==========================================
+           4. PARTICLES & VFX
+           ========================================== */
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life, isSparkle = false) {
+                this.x = x; this.y = y;
+                this.vx = vx; this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.maxLife = life;
+                this.life = life;
+                this.isSparkle = isSparkle;
+            }
+
+            update(dt) {
+                this.x += this.vx * dt * 60;
+                this.y += this.vy * dt * 60;
+                this.life -= dt;
+            }
+
+            draw(ctx) {
+                if (this.life <= 0) return;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+                
+                if (this.isSparkle) {
+                    ctx.fillStyle = this.color || '#ffffff';
+                    ctx.translate(this.x, this.y);
+                    ctx.beginPath();
+                    for (let i = 0; i < 4; i++) {
+                        ctx.rotate(Math.PI / 2);
+                        ctx.lineTo(0, this.size);
+                        ctx.lineTo(this.size * 0.3, this.size * 0.3);
+                    }
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class FloatingText {
+            constructor(x, y, text, color, isCoinIcon = false) {
+                this.x = x; this.y = y;
+                this.text = text;
+                this.color = color;
+                this.isCoinIcon = isCoinIcon;
+                this.life = 1.2;
+            }
+
+            update(dt) {
+                this.y -= 32 * dt;
+                this.life -= dt;
+            }
+
+            draw(ctx) {
+                if (this.life <= 0) return;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.font = '900 22px -apple-system, sans-serif';
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 4;
+                ctx.strokeText(this.text, this.x, this.y);
+                ctx.fillText(this.text, this.x, this.y);
+
+                if (this.isCoinIcon) {
+                    const textWidth = ctx.measureText(this.text).width;
+                    const coinX = this.x + textWidth / 2 + 12;
+                    const coinY = this.y - 8;
+                    
+                    ctx.save();
+                    ctx.translate(coinX, coinY);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 9, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffb300';
+                    ctx.fill();
+                    ctx.strokeStyle = '#ff6f00';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffd54f';
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ff6f00';
+                    ctx.font = '900 9px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('¢', 0, 1);
+                    ctx.restore();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        /* ==========================================
+           5. CUTE PIGGIE CUSTOMER CLASS
+           ========================================== */
+        class Customer {
+            constructor(seatIndex, seatPos, requestedSushi, maxPatience, isGolden = false) {
+                this.seatIndex = seatIndex;
+                this.x = seatPos.x;
+                this.y = seatPos.y;
+                this.sushi = requestedSushi;
+                this.isGolden = isGolden;
+
+                this.maxPatience = isGolden ? (maxPatience * 0.5) : maxPatience;
+                this.patience = this.maxPatience;
+
+                this.color = isGolden ? '#ffd700' : CUSTOMER_BODY_COLORS[Math.floor(Math.random() * CUSTOMER_BODY_COLORS.length)];
+                this.state = 'entering';
+                this.scale = 0;
+                this.bounceY = 0;
+                this.timer = 0;
+            }
+
+            update(dt) {
+                this.timer += dt;
+                this.bounceY = Math.sin(this.timer * 4) * 3;
+
+                if (this.state === 'entering') {
+                    this.scale = Math.min(1, this.scale + dt * 3);
+                    if (this.scale >= 1) this.state = 'sitting';
+                } else if (this.state === 'sitting') {
+                    this.patience -= dt;
+                } else if (this.state === 'happy') {
+                    this.scale = 1 + Math.sin(this.timer * 15) * 0.15;
+                } else if (this.state === 'leaving') {
+                    this.scale -= dt * 3;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y + this.bounceY);
+                ctx.scale(this.scale * 0.88, this.scale * 0.88);
+
+                if (this.isGolden) {
+                    ctx.save();
+                    ctx.shadowColor = '#ffe082';
+                    ctx.shadowBlur = 12;
+                    ctx.fillStyle = 'rgba(255, 224, 130, 0.35)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                ctx.fillStyle = 'rgba(0,0,0,0.18)';
+                ctx.beginPath();
+                ctx.ellipse(0, 14, 24, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = this.isGolden ? '#b78103' : '#3c2415';
+                ctx.lineWidth = 3;
+
+                ctx.beginPath();
+                ctx.moveTo(-18, -10);
+                ctx.quadraticCurveTo(-26, -26, -10, -20);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(18, -10);
+                ctx.quadraticCurveTo(26, -26, 10, -20);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = this.isGolden ? '#fff3e0' : 'rgba(255, 255, 255, 0.35)';
+                ctx.beginPath();
+                ctx.arc(-16, -17, 3.5, 0, Math.PI * 2);
+                ctx.arc(16, -17, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = this.isGolden ? '#ffca28' : '#ff80ab';
+                ctx.beginPath();
+                ctx.ellipse(0, 4, 8, 5.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = this.isGolden ? '#b78103' : '#3c2415';
+                ctx.stroke();
+
+                ctx.fillStyle = this.isGolden ? '#b78103' : '#3c2415';
+                ctx.beginPath();
+                ctx.ellipse(-3, 4, 1.3, 2.2, 0, 0, Math.PI * 2);
+                ctx.ellipse(3, 4, 1.3, 2.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (this.state === 'happy') {
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = this.isGolden ? '#b78103' : '#3c2415';
+                    ctx.beginPath();
+                    ctx.arc(-8, -4, 3.5, Math.PI, 0);
+                    ctx.arc(8, -4, 3.5, Math.PI, 0);
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = this.isGolden ? '#795548' : '#3c2415';
+                    ctx.beginPath();
+                    ctx.arc(-8, -4, 2.8, 0, Math.PI * 2);
+                    ctx.arc(8, -4, 2.8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(-9, -5, 1, 0, Math.PI * 2);
+                    ctx.arc(7, -5, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = 'rgba(255, 64, 129, 0.55)';
+                ctx.beginPath();
+                ctx.arc(-13, 2, 3.5, 0, Math.PI * 2);
+                ctx.arc(13, 2, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.save();
+                ctx.translate(0, -42);
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(0, 0, 16, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = this.isGolden ? '#f57f17' : '#714b35';
+                ctx.stroke();
+
+                ctx.fillStyle = this.sushi.color;
+                ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+
+                if (this.state === 'sitting') {
+                    const pRatio = Math.max(0, this.patience / this.maxPatience);
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.fillRect(-15, 20, 30, 4.5);
+                    ctx.fillStyle = this.isGolden 
+                        ? (pRatio > 0.5 ? '#ffd54f' : (pRatio > 0.2 ? '#ff9800' : '#d32f2f'))
+                        : (pRatio > 0.5 ? '#66bb6a' : (pRatio > 0.2 ? '#ffa726' : '#ef5350'));
+                    ctx.fillRect(-15, 20, 30 * pRatio, 4.5);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        /* ==========================================
+           6. MAIN GAME ENGINE
+           ========================================== */
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.width = 0;
+                this.height = 0;
+
+                this.trackPoints = [];
+                this.seats = [];
+                this.maxBeltCapacity = 16;
+
+                this.state = 'MENU';
+                this.level = 1;
+                this.coins = 0;
+                this.combo = 0;
+                this.comboTimer = 0;
+                
+                this.timeRemaining = 120;
+
+                this.freeFastTries = 3;
+                this.freeTrashTries = 3;
+
+                this.giftProgress = 0;
+
+                this.sushiOnBelt = [];
+                this.customers = [];
+                this.particles = [];
+                this.floatingTexts = [];
+
+                this.activeSushiTypes = [];
+                this.targetCustomers = 0;
+                this.customersServedCount = 0;
+
+                this.targetGoldenCount = 0;
+                this.goldenSpawnedCount = 0;
+
+                this.sushiStock = {};
+
+                this.beltSpeed = 0.0864;
+                this.speedMultiplier = 1.0;
+                this.fastTimer = 0;
+
+                this.arrowOffset = 0;
+                this.shakeTime = 0;
+
+                this.hasTappedInLevel1 = false;
+
+                this.initSVGImages();
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                
+                this.bindUI();
+                this.lastTime = performance.now();
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            initSVGImages() {
+                this.sushiImages = {};
+                SUSHI_TYPES.forEach(sushi => {
+                    const svg = document.getElementById(sushi.svgId);
+                    if (svg) {
+                        const img = new Image();
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        const svgBlob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50">${svgData}</svg>`], {type: 'image/svg+xml;charset=utf-8'});
+                        const url = URL.createObjectURL(svgBlob);
+                        img.src = url;
+                        this.sushiImages[sushi.id] = img;
+                    }
+                });
+            }
+
+            resize() {
+                const wrapper = document.getElementById('canvas-wrapper');
+                this.width = wrapper.clientWidth;
+                this.height = wrapper.clientHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+
+                this.buildTrack();
+                if (this.state === 'PLAYING') {
+                    this.positionTutorialHand();
+                }
+            }
+
+            buildTrack() {
+                this.trackPoints = [];
+                this.seats = [];
+
+                const marginX = this.width * 0.18;
+                const topY = this.height * 0.22;
+                const bottomY = this.height * 0.72;
+                const leftX = marginX;
+                const rightX = this.width - marginX;
+                const radius = 38;
+                const midX = (leftX + rightX) / 2;
+
+                const addSegment = (p1, p2, steps = 18) => {
+                    for (let i = 0; i < steps; i++) {
+                        const t = i / steps;
+                        this.trackPoints.push({ x: lerp(p1.x, p2.x, t), y: lerp(p1.y, p2.y, t) });
+                    }
+                };
+
+                const addArc = (cx, cy, startAngle, endAngle, steps = 14) => {
+                    for (let i = 0; i < steps; i++) {
+                        const a = lerp(startAngle, endAngle, i / steps);
+                        this.trackPoints.push({ x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius });
+                    }
+                };
+
+                addSegment({x: midX, y: bottomY}, {x: leftX + radius, y: bottomY}, 15);
+                addArc(leftX + radius, bottomY - radius, Math.PI/2, Math.PI, 18);
+                
+                addSegment({x: leftX, y: bottomY - radius}, {x: leftX, y: topY + radius}, 30);
+                addArc(leftX + radius, topY + radius, Math.PI, Math.PI * 1.5, 18);
+                
+                addSegment({x: leftX + radius, y: topY}, {x: rightX - radius, y: topY}, 30);
+                addArc(rightX - radius, topY + radius, -Math.PI/2, 0, 18);
+                
+                addSegment({x: rightX, y: topY + radius}, {x: rightX, y: bottomY - radius}, 30);
+                addArc(rightX - radius, bottomY - radius, 0, Math.PI/2, 18);
+                
+                addSegment({x: rightX - radius, y: bottomY}, {x: midX, y: bottomY}, 15);
+
+                const seatDefinitions = [
+                    { id: 0, idx: 22, isBottomRight: false },
+                    { id: 1, idx: 42, isBottomRight: false },
+                    { id: 2, idx: 62, isBottomRight: false },
+                    { id: 3, idx: 88, isBottomRight: false },
+                    { id: 4, idx: 114, isBottomRight: false },
+                    { id: 5, idx: 138, isBottomRight: false },
+                    { id: 6, idx: 162, isBottomRight: true }
+                ];
+
+                seatDefinitions.forEach(def => {
+                    if (def.idx < this.trackPoints.length) {
+                        const pt = this.trackPoints[def.idx];
+                        const prev = this.trackPoints[(def.idx - 2 + this.trackPoints.length) % this.trackPoints.length];
+                        const next = this.trackPoints[(def.idx + 2) % this.trackPoints.length];
+                        const dx = next.x - prev.x;
+                        const dy = next.y - prev.y;
+                        const len = Math.hypot(dx, dy) || 1;
+                        const nx = -dy / len;
+                        const ny = dx / len;
+
+                        let customOffset = 52;
+                        if (pt.y < topY + 60) {
+                            customOffset = 68;
+                        }
+
+                        this.seats.push({
+                            id: def.id,
+                            trackIdx: def.idx,
+                            isBottomRight: def.isBottomRight,
+                            x: pt.x + nx * customOffset,
+                            y: pt.y + ny * customOffset
+                        });
+                    }
+                });
+            }
+
+            startLevel(lvl) {
+                this.level = lvl;
+                this.sushiOnBelt = [];
+                this.customers = [];
+                this.particles = [];
+                this.floatingTexts = [];
+                this.customersServedCount = 0;
+                this.hasTappedInLevel1 = false;
+
+                const sushiCount = Math.min(6, 2 + Math.floor((lvl - 1) / 2));
+                this.activeSushiTypes = SUSHI_TYPES.slice(0, sushiCount);
+                this.targetCustomers = 4 + (lvl - 1) * 2;
+                
+                this.sushiStock = {};
+                if (lvl >= 10) {
+                    const requiredPerType = Math.ceil(this.targetCustomers / sushiCount);
+                    this.activeSushiTypes.forEach(s => {
+                        this.sushiStock[s.id] = requiredPerType + 2;
+                    });
+                }
+
+                this.goldenSpawnedCount = 0;
+                if (lvl <= 3) {
+                    this.targetGoldenCount = 0;
+                } else if (lvl >= 4 && lvl <= 6) {
+                    this.targetGoldenCount = 1;
+                } else if (lvl >= 7 && lvl <= 15) {
+                    this.targetGoldenCount = Math.floor(Math.random() * 2) + 1;
+                } else {
+                    this.targetGoldenCount = Math.floor(Math.random() * 3) + 1;
+                }
+
+                this.beltSpeed = 0.0864 + Math.min(0.08, (lvl - 1) * 0.012);
+                this.timeRemaining = Math.max(30, 120 - (lvl - 1) * 10);
+
+                this.setupChefUI();
+                this.updateBoosterUI();
+                this.updateHUD();
+
+                for (let i = 0; i < 3; i++) {
+                    this.spawnCustomer();
+                }
+
+                this.state = 'PLAYING';
+
+                if (this.level === 1) {
+                    setTimeout(() => this.positionTutorialHand(), 100);
+                } else {
+                    this.hideTutorialHand();
+                }
+            }
+
+            positionTutorialHand() {
+                const handElem = document.getElementById('tutorial-hand');
+                const promptElem = document.getElementById('level1-prompt');
+
+                if (this.state === 'PLAYING' && this.level === 1 && !this.hasTappedInLevel1) {
+                    if (promptElem) promptElem.style.display = 'flex';
+
+                    const firstBtn = document.querySelector('#chef-row .chef-btn:first-child');
+                    if (firstBtn && handElem) {
+                        const btnRect = firstBtn.getBoundingClientRect();
+                        const containerRect = document.getElementById('game-container').getBoundingClientRect();
+                        
+                        // Center index finger tip directly over the first sushi button
+                        const handX = (btnRect.left - containerRect.left) + (btnRect.width / 2) - 22;
+                        const handY = (btnRect.top - containerRect.top) + (btnRect.height / 2) - 20;
+
+                        handElem.style.left = `${handX}px`;
+                        handElem.style.top = `${handY}px`;
+                        handElem.style.display = 'block';
+                    }
+                } else {
+                    this.hideTutorialHand();
+                }
+            }
+
+            hideTutorialHand() {
+                const handElem = document.getElementById('tutorial-hand');
+                const promptElem = document.getElementById('level1-prompt');
+
+                if (handElem) handElem.style.display = 'none';
+                if (promptElem) promptElem.style.display = 'none';
+            }
+
+            setupChefUI() {
+                const container = document.getElementById('chef-row');
+                container.innerHTML = '';
+                
+                this.activeSushiTypes.forEach(sushi => {
+                    const btn = document.createElement('div');
+                    btn.className = 'chef-btn';
+                    btn.id = `chef-btn-${sushi.id}`;
+
+                    const img = this.sushiImages[sushi.id];
+                    if (img) {
+                        const cloneImg = img.cloneNode();
+                        btn.appendChild(cloneImg);
+                    }
+
+                    const stockBadge = document.createElement('span');
+                    stockBadge.className = 'stock-badge';
+                    stockBadge.id = `stock-badge-${sushi.id}`;
+                    btn.appendChild(stockBadge);
+
+                    const handleTap = (e) => {
+                        if (e) e.preventDefault();
+                        sound.init();
+
+                        if (this.level === 1 && !this.hasTappedInLevel1) {
+                            this.hasTappedInLevel1 = true;
+                            this.hideTutorialHand();
+                        }
+
+                        if (this.level >= 10 && this.sushiStock[sushi.id] <= 0) {
+                            this.buySushiStock(sushi.id);
+                        } else {
+                            this.spawnSushi(sushi);
+                        }
+                    };
+
+                    btn.addEventListener('pointerdown', handleTap);
+                    container.appendChild(btn);
+                });
+
+                this.updateChefStockUI();
+            }
+
+            updateChefStockUI() {
+                if (this.level < 10) return;
+
+                this.activeSushiTypes.forEach(sushi => {
+                    const btn = document.getElementById(`chef-btn-${sushi.id}`);
+                    const badge = document.getElementById(`stock-badge-${sushi.id}`);
+                    const count = this.sushiStock[sushi.id] || 0;
+
+                    if (btn && badge) {
+                        if (count > 0) {
+                            badge.innerText = count;
+                            badge.className = 'stock-badge';
+                            btn.classList.remove('out-of-stock');
+                        } else {
+                            badge.innerHTML = `+3 ${this.getCoinBadgeHTML(100)}`;
+                            badge.className = 'stock-badge empty';
+                            btn.classList.add('out-of-stock');
+                        }
+                    }
+                });
+            }
+
+            buySushiStock(sushiId) {
+                if (this.coins >= 100) {
+                    this.coins -= 100;
+                    this.sushiStock[sushiId] = (this.sushiStock[sushiId] || 0) + 3;
+                    sound.playClick();
+                    this.floatingTexts.push(new FloatingText(this.width * 0.5, this.height * 0.7, `RESTOCKED +3!`, '#2e7d32'));
+                    this.updateChefStockUI();
+                    this.updateHUD();
+                } else {
+                    sound.playGameOver();
+                    this.floatingTexts.push(new FloatingText(this.width * 0.5, this.height * 0.7, `NEED 100 COINS!`, '#d32f2f'));
+                }
+            }
+
+            getCoinBadgeHTML(costOrText) {
+                return `
+                    <svg class="gold-coin-icon" viewBox="0 0 32 32">
+                        <circle cx="16" cy="16" r="14" fill="#ffb300" stroke="#ff6f00" stroke-width="2"/>
+                        <circle cx="16" cy="16" r="10" fill="#ffd54f"/>
+                        <text x="16" y="21" font-size="14" font-weight="900" fill="#ff6f00" text-anchor="middle">¢</text>
+                    </svg>${costOrText}`;
+            }
+
+            updateBoosterUI() {
+                const badgeFast = document.getElementById('badge-fast');
+                const btnFast = document.getElementById('btn-boost-fast');
+                if (this.freeFastTries > 0) {
+                    badgeFast.innerText = `FREE: ${this.freeFastTries}`;
+                    btnFast.classList.remove('disabled');
+                } else {
+                    badgeFast.innerHTML = this.getCoinBadgeHTML(100);
+                    if (this.coins < 100) btnFast.classList.add('disabled');
+                    else btnFast.classList.remove('disabled');
+                }
+
+                const badgeTrash = document.getElementById('badge-trash');
+                const btnTrash = document.getElementById('btn-boost-trash');
+                if (this.freeTrashTries > 0) {
+                    badgeTrash.innerText = `FREE: ${this.freeTrashTries}`;
+                    btnTrash.classList.remove('disabled');
+                } else {
+                    badgeTrash.innerHTML = this.getCoinBadgeHTML(100);
+                    if (this.coins < 100) btnTrash.classList.add('disabled');
+                    else btnTrash.classList.remove('disabled');
+                }
+            }
+
+            spawnSushi(sushiType) {
+                if (this.state !== 'PLAYING') return;
+
+                if (this.level >= 10 && this.sushiStock[sushiType.id] <= 0) {
+                    return;
+                }
+
+                const minDistance = 0.06;
+                const isBlocked = this.sushiOnBelt.some(s => s.progress < minDistance);
+
+                if (isBlocked) {
+                    this.triggerShake(0.2);
+                    return;
+                }
+
+                if (this.level >= 10) {
+                    this.sushiStock[sushiType.id]--;
+                    this.updateChefStockUI();
+                }
+
+                this.sushiOnBelt.push({
+                    id: Math.random(),
+                    type: sushiType,
+                    progress: 0.0
+                });
+
+                sound.playSpawn();
+
+                if (this.sushiOnBelt.length >= this.maxBeltCapacity) {
+                    this.triggerGameOver('BELT FULL!', 'The conveyor belt overflowed and crashed!');
+                }
+            }
+
+            spawnCustomer() {
+                if (this.customersServedCount + this.customers.length >= this.targetCustomers) return;
+                if (this.customers.length >= 3) return;
+
+                const occupiedSeatIds = this.customers.map(c => c.seatIndex);
+                let freeSeats = this.seats.filter(seat => !occupiedSeatIds.includes(seat.id));
+
+                if (this.level < 5) {
+                    freeSeats = freeSeats.filter(seat => !seat.isBottomRight);
+                }
+
+                if (freeSeats.length === 0) return;
+
+                freeSeats = freeSeats.filter(candidateSeat => {
+                    return !this.customers.some(c => {
+                        const dist = Math.hypot(c.x - candidateSeat.x, c.y - candidateSeat.y);
+                        return dist < 64;
+                    });
+                });
+
+                if (freeSeats.length === 0) return;
+
+                const selectedSeat = freeSeats[Math.floor(Math.random() * freeSeats.length)];
+                const randomSushi = this.activeSushiTypes[Math.floor(Math.random() * this.activeSushiTypes.length)];
+                
+                let patience = Math.max(12, 25 - this.level * 1.2);
+                if (this.level <= 5) patience *= 1.10;
+
+                let isGolden = false;
+                if (this.goldenSpawnedCount < this.targetGoldenCount) {
+                    isGolden = true;
+                    this.goldenSpawnedCount++;
+                }
+
+                this.customers.push(new Customer(selectedSeat.id, selectedSeat, randomSushi, patience, isGolden));
+            }
+
+            useFastBooster() {
+                if (this.state !== 'PLAYING' || this.fastTimer > 0) return;
+
+                if (this.freeFastTries > 0) {
+                    this.freeFastTries--;
+                } else if (this.coins >= 100) {
+                    this.coins -= 100;
+                } else {
+                    return;
+                }
+
+                this.fastTimer = 8.0;
+                sound.playClick();
+                this.updateBoosterUI();
+                this.updateHUD();
+            }
+
+            useTrashBooster() {
+                if (this.state !== 'PLAYING' || this.sushiOnBelt.length === 0) return;
+
+                if (this.freeTrashTries > 0) {
+                    this.freeTrashTries--;
+                } else if (this.coins >= 100) {
+                    this.coins -= 100;
+                } else {
+                    return;
+                }
+
+                this.sushiOnBelt.sort((a,b) => b.progress - a.progress);
+                const removed = this.sushiOnBelt.shift();
+                if (removed) {
+                    const pt = getPointOnTrack(this.trackPoints, removed.progress);
+                    this.createPoofParticles(pt.x, pt.y, '#e0e0e0');
+                }
+
+                sound.playClick();
+                this.updateBoosterUI();
+                this.updateHUD();
+            }
+
+            triggerShake(duration) {
+                this.shakeTime = duration;
+            }
+
+            /* ==========================================
+               7. UPDATE LOGIC
+               ========================================== */
+            update(dt) {
+                if (this.state !== 'PLAYING') return;
+
+                this.timeRemaining -= dt;
+                if (this.timeRemaining <= 0) {
+                    this.timeRemaining = 0;
+                    this.triggerTimeOut();
+                    return;
+                }
+
+                if (this.fastTimer > 0) {
+                    this.fastTimer -= dt;
+                    this.speedMultiplier = 2.2;
+                } else {
+                    this.speedMultiplier = 1.0;
+                }
+
+                if (this.comboTimer > 0) {
+                    this.comboTimer -= dt;
+                    if (this.comboTimer <= 0) this.combo = 0;
+                }
+
+                if (this.shakeTime > 0) this.shakeTime -= dt;
+
+                const currentSpeed = this.beltSpeed * this.speedMultiplier;
+                this.arrowOffset = (this.arrowOffset + currentSpeed * dt * 0.5) % 1.0;
+
+                this.sushiOnBelt.forEach(sushi => {
+                    sushi.progress = (sushi.progress + currentSpeed * dt) % 1.0;
+                });
+
+                for (let i = this.customers.length - 1; i >= 0; i--) {
+                    const c = this.customers[i];
+                    c.update(dt);
+
+                    if (c.state === 'sitting') {
+                        const customerSeatObj = this.seats.find(s => s.id === c.seatIndex);
+                        if (customerSeatObj) {
+                            const seatTrackPos = customerSeatObj.trackIdx / this.trackPoints.length;
+
+                            const matchingSushiIdx = this.sushiOnBelt.findIndex(s => {
+                                if (s.type.id !== c.sushi.id) return false;
+                                const dist = Math.abs(s.progress - seatTrackPos);
+                                return dist < 0.03 || dist > 0.97;
+                            });
+
+                            if (matchingSushiIdx !== -1) {
+                                this.serveCustomer(c, matchingSushiIdx);
+                            } else if (c.patience <= 0) {
+                                c.state = 'leaving';
+                                this.triggerShake(0.3);
+                            }
+                        }
+                    } else if (c.state === 'leaving' && c.scale <= 0) {
+                        this.customers.splice(i, 1);
+                        this.spawnCustomer();
+                    }
+                }
+
+                this.particles.forEach(p => p.update(dt));
+                this.particles = this.particles.filter(p => p.life > 0);
+
+                this.floatingTexts.forEach(ft => ft.update(dt));
+                this.floatingTexts = this.floatingTexts.filter(ft => ft.life > 0);
+
+                if (this.customersServedCount >= this.targetCustomers && this.customers.length === 0) {
+                    this.triggerWin();
+                }
+
+                this.updateHUD();
+            }
+
+            serveCustomer(customer, sushiIdx) {
+                this.sushiOnBelt.splice(sushiIdx, 1);
+
+                this.combo++;
+                this.comboTimer = 3.5;
+                if (this.combo > 1) {
+                    this.timeRemaining += 2.0;
+                    this.floatingTexts.push(new FloatingText(customer.x, customer.y - 45, `+2s COMBO!`, '#d84315'));
+                }
+
+                if (customer.isGolden) {
+                    this.coins += 10;
+                    this.floatingTexts.push(new FloatingText(customer.x - 12, customer.y - 25, `+10`, '#ffb300', true));
+                    this.createGoldenSparkles(customer.x, customer.y);
+                } else {
+                    this.floatingTexts.push(new FloatingText(customer.x, customer.y - 20, `FED!`, '#4caf50'));
+                }
+
+                this.customersServedCount++;
+                customer.state = 'happy';
+                setTimeout(() => customer.state = 'leaving', 800);
+
+                sound.playServe();
+                this.createHeartsAndSparkles(customer.x, customer.y);
+
+                this.updateHUD();
+            }
+
+            createHeartsAndSparkles(x, y) {
+                for (let i = 0; i < 14; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 4;
+                    const isSparkle = Math.random() > 0.4;
+                    this.particles.push(new Particle(
+                        x, y,
+                        Math.cos(angle) * speed, Math.sin(angle) * speed,
+                        ['#ff4081', '#ffd54f', '#64ffda', '#ff7043'][Math.floor(Math.random() * 4)],
+                        isSparkle ? (6 + Math.random() * 4) : (4 + Math.random() * 3),
+                        0.6 + Math.random() * 0.4,
+                        isSparkle
+                    ));
+                }
+            }
+
+            createGoldenSparkles(x, y) {
+                for (let i = 0; i < 16; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2.5 + Math.random() * 4;
+                    this.particles.push(new Particle(
+                        x, y,
+                        Math.cos(angle) * speed, Math.sin(angle) * speed,
+                        '#ffd54f',
+                        6 + Math.random() * 4,
+                        0.8 + Math.random() * 0.4,
+                        true
+                    ));
+                }
+            }
+
+            createPoofParticles(x, y, color) {
+                for (let i = 0; i < 8; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    this.particles.push(new Particle(
+                        x, y,
+                        Math.cos(angle) * 2, Math.sin(angle) * 2,
+                        color, 5, 0.4
+                    ));
+                }
+            }
+
+            updateHUD() {
+                document.getElementById('hud-objective').innerText = `${this.customersServedCount}/${this.targetCustomers}`;
+                
+                const mins = Math.floor(this.timeRemaining / 60);
+                const secs = Math.floor(this.timeRemaining % 60);
+                document.getElementById('hud-timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                document.getElementById('hud-coins').innerText = this.coins;
+                document.getElementById('hud-level').innerText = this.level;
+
+                this.updateBoosterUI();
+            }
+
+            triggerGameOver(title, message) {
+                this.state = 'GAMEOVER';
+                this.hideTutorialHand();
+                sound.playGameOver();
+                document.getElementById('go-title').innerText = title;
+                document.getElementById('go-message').innerText = message;
+                document.getElementById('gameover-overlay').classList.add('active');
+            }
+
+            triggerTimeOut() {
+                this.state = 'PAUSED';
+                this.hideTutorialHand();
+                sound.playGameOver();
+                
+                const buyBtn = document.getElementById('btn-buy-time');
+                if (this.coins < 100) {
+                    buyBtn.classList.add('disabled');
+                } else {
+                    buyBtn.classList.remove('disabled');
+                }
+
+                document.getElementById('time-overlay').classList.add('active');
+            }
+
+            buyExtraTime() {
+                if (this.coins >= 100) {
+                    this.coins -= 100;
+                    this.timeRemaining = 30;
+                    sound.playClick();
+                    document.getElementById('time-overlay').classList.remove('active');
+                    this.state = 'PLAYING';
+                    this.updateHUD();
+                }
+            }
+
+            triggerWin() {
+                this.state = 'WIN';
+                this.hideTutorialHand();
+                this.coins += 100;
+                sound.playWin();
+
+                this.createConfetti();
+
+                this.giftProgress += 10;
+                let boosterUnlocked = false;
+
+                if (this.giftProgress >= 100) {
+                    this.giftProgress = 0;
+                    boosterUnlocked = true;
+
+                    if (Math.random() < 0.5) {
+                        this.freeFastTries++;
+                    } else {
+                        this.freeTrashTries++;
+                    }
+                }
+
+                document.getElementById('gift-percent-text').innerText = boosterUnlocked ? '100% UNLOCKED!' : `${this.giftProgress}%`;
+                document.getElementById('gift-bar-fill').style.width = boosterUnlocked ? '100%' : `${this.giftProgress}%`;
+                
+                const rewardMsg = document.getElementById('gift-reward-msg');
+                if (boosterUnlocked) {
+                    rewardMsg.style.display = 'block';
+                } else {
+                    rewardMsg.style.display = 'none';
+                }
+
+                this.updateBoosterUI();
+                document.getElementById('win-overlay').classList.add('active');
+            }
+
+            createConfetti() {
+                for (let i = 0; i < 90; i++) {
+                    const isSparkle = Math.random() > 0.4;
+                    this.particles.push(new Particle(
+                        Math.random() * this.width, 
+                        Math.random() * this.height * 0.6,
+                        (Math.random() - 0.5) * 5, 
+                        Math.random() * 4 + 2,
+                        ['#ff1744', '#ffea00', '#00e676', '#2979ff', '#d500f9', '#ffd700'][Math.floor(Math.random() * 6)],
+                        isSparkle ? 7 : 5, 
+                        2.5,
+                        isSparkle
+                    ));
+                }
+            }
+
+            /* ==========================================
+               8. RENDER SYSTEM
+               ========================================== */
+            draw() {
+                this.ctx.save();
+
+                if (this.shakeTime > 0) {
+                    const dx = (Math.random() - 0.5) * 8;
+                    const dy = (Math.random() - 0.5) * 8;
+                    this.ctx.translate(dx, dy);
+                }
+
+                const bgGrad = this.ctx.createLinearGradient(0, 0, 0, this.height);
+                bgGrad.addColorStop(0, '#aa91e2');
+                bgGrad.addColorStop(1, '#8e73cf');
+                this.ctx.fillStyle = bgGrad;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                this.drawRestaurantTable();
+                this.drawConveyorBelt();
+
+                this.customers.forEach(c => c.draw(this.ctx));
+                this.drawSushiOnBelt();
+
+                this.particles.forEach(p => p.draw(this.ctx));
+                this.floatingTexts.forEach(ft => ft.draw(this.ctx));
+
+                this.ctx.restore();
+            }
+
+            drawRestaurantTable() {
+                const marginX = this.width * 0.08;
+                const topY = this.height * 0.16;
+                const height = this.height * 0.64;
+
+                const grad = this.ctx.createLinearGradient(0, topY, 0, topY + height);
+                grad.addColorStop(0, '#ece0f8');
+                grad.addColorStop(1, '#d8c2ed');
+
+                this.ctx.fillStyle = grad;
+                this.ctx.beginPath();
+                this.ctx.roundRect(marginX, topY, this.width - marginX * 2, height, 36);
+                this.ctx.fill();
+
+                this.ctx.lineWidth = 6;
+                this.ctx.strokeStyle = '#7e57c2';
+                this.ctx.stroke();
+            }
+
+            drawConveyorBelt() {
+                if (this.trackPoints.length === 0) return;
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.trackPoints[0].x, this.trackPoints[0].y);
+                for (let i = 1; i < this.trackPoints.length; i++) {
+                    this.ctx.lineTo(this.trackPoints[i].x, this.trackPoints[i].y);
+                }
+                this.ctx.closePath();
+
+                this.ctx.lineWidth = 42;
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.stroke();
+
+                this.ctx.lineWidth = 32;
+                this.ctx.strokeStyle = '#cfd8dc';
+                this.ctx.stroke();
+
+                this.ctx.lineWidth = 22;
+                this.ctx.strokeStyle = '#37474f';
+                this.ctx.stroke();
+
+                const startPt = this.trackPoints[0];
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.arc(startPt.x, startPt.y, 14, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'rgba(255, 167, 38, 0.4)';
+                this.ctx.fill();
+                this.ctx.restore();
+
+                const arrowSpacing = 0.05;
+                const arrowCount = Math.floor(1 / arrowSpacing);
+
+                for (let i = 0; i < arrowCount; i++) {
+                    const progress = (i * arrowSpacing + this.arrowOffset) % 1.0;
+                    const pt = getPointOnTrack(this.trackPoints, progress);
+
+                    this.ctx.save();
+                    this.ctx.translate(pt.x, pt.y);
+                    this.ctx.rotate(pt.angle);
+
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(-6, -5);
+                    this.ctx.lineTo(4, 0);
+                    this.ctx.lineTo(-6, 5);
+                    this.ctx.lineWidth = 3.5;
+                    this.ctx.strokeStyle = this.fastTimer > 0 ? '#ffeb3b' : '#80d8ff';
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.stroke();
+
+                    this.ctx.restore();
+                }
+            }
+
+            drawSushiOnBelt() {
+                this.sushiOnBelt.forEach(sushi => {
+                    const pt = getPointOnTrack(this.trackPoints, sushi.progress);
+
+                    this.ctx.save();
+                    this.ctx.translate(pt.x, pt.y);
+
+                    this.ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(0, 5, 20, 13, 0, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    const plateGrad = this.ctx.createRadialGradient(-4, -4, 2, 0, 0, 20);
+                    plateGrad.addColorStop(0, '#ffffff');
+                    plateGrad.addColorStop(0.8, '#e3f2fd');
+                    plateGrad.addColorStop(1, '#bbdefb');
+
+                    this.ctx.fillStyle = plateGrad;
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(0, 0, 19, 13, 0, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeStyle = '#90caf9';
+                    this.ctx.stroke();
+
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI * 2);
+                    this.ctx.strokeStyle = '#ff5252';
+                    this.ctx.stroke();
+
+                    const img = this.sushiImages[sushi.type.id];
+                    if (img) {
+                        this.ctx.drawImage(img, -20, -22, 40, 40);
+                    }
+
+                    this.ctx.restore();
+                });
+            }
+
+            /* ==========================================
+               9. MAIN LOOP & CONTROLS
+               ========================================== */
+            loop(now) {
+                const dt = Math.min(0.1, (now - this.lastTime) / 1000);
+                this.lastTime = now;
+
+                this.update(dt);
+                this.draw();
+
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            bindUI() {
+                document.getElementById('btn-start').onclick = () => {
+                    sound.init();
+                    sound.playClick();
+                    document.getElementById('menu-overlay').classList.remove('active');
+                    this.startLevel(1);
+                };
+
+                document.getElementById('btn-pause').onclick = () => {
+                    if (this.state !== 'PLAYING') return;
+                    sound.playClick();
+                    this.state = 'PAUSED';
+                    document.getElementById('pause-overlay').classList.add('active');
+                };
+
+                document.getElementById('btn-resume').onclick = () => {
+                    sound.playClick();
+                    document.getElementById('pause-overlay').classList.remove('active');
+                    this.state = 'PLAYING';
+                };
+
+                document.getElementById('btn-restart-pause').onclick = () => {
+                    sound.playClick();
+                    document.getElementById('pause-overlay').classList.remove('active');
+                    this.startLevel(this.level);
+                };
+
+                document.getElementById('btn-restart').onclick = () => {
+                    sound.playClick();
+                    document.getElementById('gameover-overlay').classList.remove('active');
+                    this.startLevel(this.level);
+                };
+
+                document.getElementById('btn-buy-time').onclick = () => this.buyExtraTime();
+                document.getElementById('btn-restart-time').onclick = () => {
+                    sound.playClick();
+                    document.getElementById('time-overlay').classList.remove('active');
+                    this.startLevel(this.level);
+                };
+
+                document.getElementById('btn-next').onclick = () => {
+                    sound.playClick();
+                    document.getElementById('win-overlay').classList.remove('active');
+                    this.startLevel(this.level + 1);
+                };
+
+                document.getElementById('btn-boost-fast').onclick = () => this.useFastBooster();
+                document.getElementById('btn-boost-trash').onclick = () => this.useTrashBooster();
+            }
+        }
+
+        window.addEventListener('load', () => {
+            window.gameInstance = new Game();
+        });
+    </script>
+</body>
+</html>
